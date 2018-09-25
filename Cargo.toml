@@ -1,0 +1,11 @@
+[package]
+name = "slowtec-core"
+version = "0.0.1"
+authors = [ "uwe.klotz@gmail.com" ]
+license = "tbd"
+publish = false
+
+[dependencies]
+failure = "*"
+futures = "0.1"
+log = "*"
