@@ -24,9 +24,3 @@ impl Default for ConnectionIdGenerator {
         }
     }
 }
-
-pub trait NewConnectionContext: Clone {
-    type Instance;
-
-    fn new_connection_context(&self) -> Self::Instance;
-}
