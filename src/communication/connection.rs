@@ -1,26 +1,48 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
+use std::usize;
 
 pub type ConnectionId = usize;
 
 #[derive(Debug)]
 pub struct ConnectionIdGenerator {
-    next_connection_id: AtomicUsize,
+    next_id: AtomicUsize,
 }
 
 impl ConnectionIdGenerator {
-    const MIN_CONNECTION_ID: ConnectionId = 1;
+    const MIN_ID: ConnectionId = usize::MIN + Self::NEXT_ID_ADD;
+    const MAX_ID: ConnectionId = usize::MAX;
+    const NEXT_ID_ADD: ConnectionId = 1;
 
     pub fn generate_id(&self) -> ConnectionId {
-        let connection_id = self.next_connection_id.fetch_add(1, Ordering::Relaxed);
-        debug_assert!(connection_id >= Self::MIN_CONNECTION_ID);
-        connection_id
+        debug_assert!(Self::NEXT_ID_ADD > 0);
+        loop {
+            let id = self.next_id.fetch_add(Self::NEXT_ID_ADD, Ordering::Relaxed);
+            debug_assert!(id <= Self::MAX_ID);
+            if id >= Self::MIN_ID {
+                return id;
+            }
+            // continue after overflow
+        }
     }
 }
 
 impl Default for ConnectionIdGenerator {
     fn default() -> Self {
         Self {
-            next_connection_id: AtomicUsize::new(Self::MIN_CONNECTION_ID),
+            next_id: AtomicUsize::new(Self::MIN_ID),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn first_id() {
+        assert_eq!(
+            ConnectionIdGenerator::MIN_ID,
+            ConnectionIdGenerator::default().generate_id()
+        );
     }
 }
