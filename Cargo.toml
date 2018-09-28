@@ -1,8 +1,8 @@
 [package]
 name = "slowtec-core"
 version = "0.0.1"
-authors = [ "uwe.klotz@gmail.com" ]
-license = "tbd"
+authors = [ "slowtec GmbH" ]
+license = "MIT/Apache-2.0"
 publish = false
 
 [dependencies]
