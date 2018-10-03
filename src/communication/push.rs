@@ -9,7 +9,7 @@ use futures::{Future, Stream};
 use std::collections::HashMap;
 
 pub trait PushConnection {
-    fn push_message(&mut self, message_payload: MessagePayload) -> ErrorResult<()>;
+    fn push_message(&mut self, message_payload: MessagePayload) -> Fallible<()>;
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -85,7 +85,7 @@ impl PushConnectionManager {
         connection_id: ConnectionId,
         message_id: MessageId,
         response_payload: MessagePayload,
-    ) -> ErrorResult<()> {
+    ) -> Fallible<()> {
         match self.connection(connection_id) {
             Some(connection) => {
                 if let Err(err) = connection.push_message(response_payload) {
@@ -112,7 +112,7 @@ impl PushConnectionManager {
         &mut self,
         mut predicate: P,
         broadcast_payload: &MessagePayload,
-    ) -> ErrorResult<()>
+    ) -> Fallible<()>
     where
         P: FnMut(ConnectionId) -> bool,
     {
@@ -148,14 +148,14 @@ impl PushConnectionManager {
         &mut self,
         connection_id: ConnectionId,
         broadcast_payload: &MessagePayload,
-    ) -> ErrorResult<()> {
+    ) -> Fallible<()> {
         self.push_broadcast_filtered(
             |other_connection_id| connection_id != other_connection_id,
             broadcast_payload,
         )
     }
 
-    pub fn push_broadcast_all(&mut self, broadcast_payload: &MessagePayload) -> ErrorResult<()> {
+    pub fn push_broadcast_all(&mut self, broadcast_payload: &MessagePayload) -> Fallible<()> {
         self.push_broadcast_filtered(|_| true, broadcast_payload)
     }
 
