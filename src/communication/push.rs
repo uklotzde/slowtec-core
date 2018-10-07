@@ -228,11 +228,11 @@ impl PushConnectionController {
 
     fn handle_action(&mut self, action: PushConnectionAction) {
         match action {
-            PushConnectionAction::Incident(_incident) => unreachable!(),
+            PushConnectionAction::Incident(incident) => match incident {},
             PushConnectionAction::Command(response_tx, command) => {
                 self.handle_command(response_tx, command)
             }
-            PushConnectionAction::Query(_query) => unreachable!(),
+            PushConnectionAction::Query(query) => match query {},
         }
     }
 
