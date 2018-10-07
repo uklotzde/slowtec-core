@@ -18,7 +18,8 @@ pub enum PushConnectionIncident {}
 pub enum PushConnectionCommand {
     Connect(ConnectionId, Box<dyn PushConnection + Send>),
     Disconnect(ConnectionId),
-    SendResponse(ConnectionId, MessageId, MessagePayload),
+    Reply(ConnectionId, MessageId, MessagePayload),
+    Notify(ConnectionId, MessagePayload),
     BroadcastOthers(ConnectionId, MessagePayload),
     BroadcastAll(MessagePayload),
 }
@@ -43,29 +44,25 @@ pub enum PushConnectionNotification {
 type PushConnectionNotificationSender = NotificationSender<PushConnectionNotification>;
 pub type PushConnectionNotificationReceiver = NotificationReceiver<PushConnectionNotification>;
 
-pub struct PushConnectionManager {
+pub struct PushConnectionController {
     connections: HashMap<ConnectionId, Box<dyn PushConnection + Send>>,
     notification_tx: PushConnectionNotificationSender,
 }
 
-impl PushConnectionManager {
-    pub fn new(notification_tx: PushConnectionNotificationSender) -> Self {
+impl PushConnectionController {
+    fn new(notification_tx: PushConnectionNotificationSender) -> Self {
         Self {
             connections: HashMap::default(),
             notification_tx,
         }
     }
 
-    pub fn connect(
-        &mut self,
-        connection_id: ConnectionId,
-        connection: Box<dyn PushConnection + Send>,
-    ) {
+    fn connect(&mut self, connection_id: ConnectionId, connection: Box<dyn PushConnection + Send>) {
         debug_assert!(!self.connections.contains_key(&connection_id));
         self.connections.insert(connection_id, connection);
     }
 
-    pub fn disconnect(
+    fn disconnect(
         &mut self,
         connection_id: ConnectionId,
     ) -> Option<Box<dyn PushConnection + Send>> {
@@ -73,14 +70,14 @@ impl PushConnectionManager {
         self.connections.remove(&connection_id)
     }
 
-    pub fn connection(
+    fn connection(
         &mut self,
         connection_id: ConnectionId,
     ) -> Option<&mut Box<dyn PushConnection + Send>> {
         self.connections.get_mut(&connection_id)
     }
 
-    pub fn push_response(
+    fn push_response(
         &mut self,
         connection_id: ConnectionId,
         message_id: MessageId,
@@ -108,7 +105,32 @@ impl PushConnectionManager {
         Ok(())
     }
 
-    pub fn push_broadcast_filtered<P>(
+    fn push_notification(
+        &mut self,
+        connection_id: ConnectionId,
+        notification_payload: MessagePayload,
+    ) -> Fallible<()> {
+        match self.connection(connection_id) {
+            Some(connection) => {
+                if let Err(err) = connection.push_message(notification_payload) {
+                    bail!(
+                        "Connection {} - Failed to start sending notification: {}",
+                        connection_id,
+                        err
+                    );
+                }
+            }
+            None => {
+                bail!(
+                    "Connection {} not found - Cannot send notification",
+                    connection_id,
+                );
+            }
+        }
+        Ok(())
+    }
+
+    fn push_broadcast_filtered<P>(
         &mut self,
         mut predicate: P,
         broadcast_payload: &MessagePayload,
@@ -144,7 +166,7 @@ impl PushConnectionManager {
         Ok(())
     }
 
-    pub fn push_broadcast_others(
+    fn push_broadcast_others(
         &mut self,
         connection_id: ConnectionId,
         broadcast_payload: &MessagePayload,
@@ -155,54 +177,56 @@ impl PushConnectionManager {
         )
     }
 
-    pub fn push_broadcast_all(&mut self, broadcast_payload: &MessagePayload) -> Fallible<()> {
+    fn push_broadcast_all(&mut self, broadcast_payload: &MessagePayload) -> Fallible<()> {
         self.push_broadcast_filtered(|_| true, broadcast_payload)
     }
 
-    pub fn handle_command(
+    fn handle_command(
         &mut self,
         response_tx: CommandResponseSender,
         command: PushConnectionCommand,
     ) {
-        match command {
+        let result = match command {
             PushConnectionCommand::Connect(connection_id, connection) => {
+                info!("Connection {} - Connecting", connection_id);
                 self.connect(connection_id, connection);
-                info!("Registered new connection {}", connection_id);
-                reply(response_tx, Ok(()));
+                info!("Connection {} - Connected", connection_id);
                 notify(
                     &self.notification_tx,
                     PushConnectionNotification::Connected(connection_id),
                 );
+                Ok(())
             }
             PushConnectionCommand::Disconnect(connection_id) => {
+                info!("Connection {} - Disconnecting", connection_id);
                 if let Some(connection) = self.disconnect(connection_id) {
-                    info!("Deregistered connection {}", connection_id);
-                    reply(response_tx, Ok(()));
+                    info!("Connection {} - Disconnected", connection_id);
                     notify(
                         &self.notification_tx,
                         PushConnectionNotification::Disconnected(connection_id, connection),
                     );
+                } else {
+                    warn!("Connection {} - Not connected", connection_id);
                 }
+                Ok(())
             }
-            PushConnectionCommand::SendResponse(connection_id, message_id, response_payload) => {
-                let result = self.push_response(connection_id, message_id, response_payload);
-                reply(response_tx, result);
+            PushConnectionCommand::Reply(connection_id, message_id, response_payload) => {
+                self.push_response(connection_id, message_id, response_payload)
+            }
+            PushConnectionCommand::Notify(connection_id, notification_payload) => {
+                self.push_notification(connection_id, notification_payload)
             }
             PushConnectionCommand::BroadcastOthers(connection_id, broadcast_payload) => {
-                let result = self.push_broadcast_others(connection_id, &broadcast_payload);
-                reply(response_tx, result);
+                self.push_broadcast_others(connection_id, &broadcast_payload)
             }
             PushConnectionCommand::BroadcastAll(broadcast_payload) => {
-                let result = self.push_broadcast_all(&broadcast_payload);
-                reply(response_tx, result);
+                self.push_broadcast_all(&broadcast_payload)
             }
-        }
+        };
+        reply(response_tx, result)
     }
 
-    pub fn handle_action(
-        &mut self,
-        action: PushConnectionAction,
-    ) -> impl Future<Item = (), Error = ()> {
+    fn handle_action(&mut self, action: PushConnectionAction) {
         match action {
             PushConnectionAction::Incident(_incident) => unreachable!(),
             PushConnectionAction::Command(response_tx, command) => {
@@ -210,23 +234,21 @@ impl PushConnectionManager {
             }
             PushConnectionAction::Query(_query) => unreachable!(),
         }
-        futures::future::ok(())
     }
 
-    pub fn handle_actions(
+    fn handle_actions(
         mut self,
         action_rx: PushConnectionActionReceiver,
     ) -> impl Future<Item = (), Error = ()> {
         action_rx
-            .and_then(move |action| self.handle_action(action))
+            .map(move |action| self.handle_action(action))
             .or_else(|()| {
-                // unreachable
-                warn!("Keep on running after error in action handler");
-                Ok(())
-            }).for_each(|()| Ok(()))
+                error!("Aborted action handling");
+                Err(())
+            }).for_each(|()| Ok(())) // consume the entire (unlimited) stream
     }
 
-    pub fn new_action_handler() -> (
+    pub fn evoke() -> (
         impl Future<Item = (), Error = ()>,
         PushConnectionActionSender,
         PushConnectionNotificationReceiver,
