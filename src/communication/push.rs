@@ -235,12 +235,10 @@ impl PushConnectionController {
         mut self,
         action_rx: PushConnectionActionReceiver,
     ) -> impl Future<Item = (), Error = ()> {
-        action_rx
-            .map(move |action| self.handle_action(action))
-            .or_else(|()| {
-                error!("Aborted action handling");
-                Err(())
-            }).for_each(|()| Ok(())) // consume the entire (unlimited) stream
+        action_rx.for_each(move |action| {
+            self.handle_action(action);
+            Ok(())
+        })
     }
 
     pub fn evoke() -> (
