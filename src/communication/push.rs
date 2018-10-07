@@ -27,11 +27,8 @@ pub enum PushConnectionCommand {
 #[derive(Debug, Clone, Copy)]
 pub enum PushConnectionQuery {}
 
-pub enum PushConnectionAction {
-    Incident(PushConnectionIncident),
-    Command(CommandResponseSender, PushConnectionCommand),
-    Query(PushConnectionQuery),
-}
+pub type PushConnectionAction =
+    Action<PushConnectionIncident, PushConnectionCommand, PushConnectionQuery>;
 
 pub type PushConnectionActionSender = ActionSender<PushConnectionAction>;
 type PushConnectionActionReceiver = ActionReceiver<PushConnectionAction>;
@@ -228,11 +225,9 @@ impl PushConnectionController {
 
     fn handle_action(&mut self, action: PushConnectionAction) {
         match action {
-            PushConnectionAction::Incident(incident) => match incident {},
-            PushConnectionAction::Command(response_tx, command) => {
-                self.handle_command(response_tx, command)
-            }
-            PushConnectionAction::Query(query) => match query {},
+            Action::Incident(incident) => match incident {},
+            Action::Command(response_tx, command) => self.handle_command(response_tx, command),
+            Action::Query(query) => match query {},
         }
     }
 
