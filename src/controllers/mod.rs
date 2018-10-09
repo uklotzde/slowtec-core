@@ -116,3 +116,7 @@ pub fn invoke_query<Q, R>(
             .map_err(|err| format_err!("Failed to submit query: {}", err)),
     ).and_then(|()| await_response(response_rx))
 }
+
+pub mod messaging;
+
+pub mod scheduling;

@@ -1,8 +1,6 @@
 use super::*;
 
-use super::connection::*;
-use super::message::*;
-use super::subsystem::*;
+use util::{connection::*, message::*};
 
 use futures::{Future, Stream};
 

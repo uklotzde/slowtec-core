@@ -6,6 +6,8 @@ license = "MIT/Apache-2.0"
 publish = false
 
 [dependencies]
+chrono = "*"
 failure = "*"
 futures = "0.1"
 log = "*"
+tokio = "0.1"
