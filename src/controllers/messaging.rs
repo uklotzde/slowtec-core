@@ -5,6 +5,7 @@ use util::{connection::*, message::*};
 use futures::{Future, Stream};
 
 use std::collections::HashMap;
+use std::ops::DerefMut;
 
 pub trait PushConnection {
     fn push_message(&mut self, message_payload: MessagePayload) -> Fallible<()>;
@@ -68,8 +69,10 @@ impl PushConnectionController {
     fn connection(
         &mut self,
         connection_id: ConnectionId,
-    ) -> Option<&mut Box<dyn PushConnection + Send>> {
-        self.connections.get_mut(&connection_id)
+    ) -> Option<&mut (dyn PushConnection + Send + 'static)> {
+        self.connections
+            .get_mut(&connection_id)
+            .map(|boxed| boxed.deref_mut())
     }
 
     fn push_response(

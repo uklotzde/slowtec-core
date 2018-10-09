@@ -13,6 +13,7 @@ impl ConnectionIdGenerator {
     const MAX_ID: ConnectionId = usize::MAX;
     const NEXT_ID_ADD: ConnectionId = 1;
 
+    #[cfg_attr(feature = "cargo-clippy", allow(absurd_extreme_comparisons))]
     pub fn generate_id(&self) -> ConnectionId {
         debug_assert!(Self::NEXT_ID_ADD > 0);
         loop {

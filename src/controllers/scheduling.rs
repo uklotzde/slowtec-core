@@ -282,7 +282,7 @@ where
                 scheduled_tasks,
             }.handle_actions(action_rx);
             // ...and combine the handlers.
-            // Warning: The order seems for combining both futures seems to matter!!
+            // Warning: The order for combining both futures seems to matter!!
             // Using select() on action_handler followed by expired_tasks_handler
             // as an argument works as expected. When reversing this order any
             // previously rescheduled tasks are retained and don't expire until

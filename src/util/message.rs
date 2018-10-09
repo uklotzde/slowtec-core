@@ -13,6 +13,7 @@ impl MessageIdGenerator {
     const MIN_ID: MessageId = usize::MIN + Self::NEXT_ID_ADD;
     const MAX_ID: MessageId = usize::MAX;
 
+    #[cfg_attr(feature = "cargo-clippy", allow(absurd_extreme_comparisons))]
     pub fn generate_id(&self) -> MessageId {
         let id = self.next_id.get();
         debug_assert!(id >= Self::MIN_ID);
