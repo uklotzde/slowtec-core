@@ -40,12 +40,12 @@ pub enum PushConnectionNotification {
 type PushConnectionNotificationSender = NotificationSender<PushConnectionNotification>;
 pub type PushConnectionNotificationReceiver = NotificationReceiver<PushConnectionNotification>;
 
-pub struct PushConnectionController {
+pub struct PushConnectionActor {
     connections: HashMap<ConnectionId, Box<dyn PushConnection + Send>>,
     notification_tx: PushConnectionNotificationSender,
 }
 
-impl PushConnectionController {
+impl PushConnectionActor {
     fn new(notification_tx: PushConnectionNotificationSender) -> Self {
         Self {
             connections: HashMap::default(),

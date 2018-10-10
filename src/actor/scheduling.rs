@@ -50,11 +50,11 @@ pub trait TaskScheduler {
 
 enum DelayQueueItem<T> {
     TaskSchedule(T),
-    Terminator,
+    KeepAlive,
 }
 
 // The valid duration is limited by this upper bound that is
-// reserved for the terminator!
+// reserved for the keep alive token!
 // TODO: The maximum acceptable value of 795 days that does
 // not cause an internal panic has been discovered experimentally.
 // No references about this limit can be found in the Tokio docs!?
@@ -65,7 +65,7 @@ struct ScheduledTaskQueue<T> {
 
     upcoming_tasks: DelayQueue<DelayQueueItem<T>>,
 
-    terminator_key: DelayQueueKey,
+    keep_alive_key: DelayQueueKey,
 }
 
 fn format_datetime<Z: chrono::TimeZone>(dt: &DateTime<Z>) -> String
@@ -82,23 +82,23 @@ where
 {
     pub fn new(task_scheduler: Box<dyn TaskScheduler<TaskSchedule = T> + Send>) -> Self {
         let mut upcoming_tasks = DelayQueue::new();
-        let terminator_key = upcoming_tasks.insert(DelayQueueItem::Terminator, MAX_DELAY_TIMEOUT);
+        let keep_alive_key = upcoming_tasks.insert(DelayQueueItem::KeepAlive, MAX_DELAY_TIMEOUT);
         Self {
             task_scheduler,
             upcoming_tasks,
-            terminator_key,
+            keep_alive_key,
         }
     }
 
-    fn reset_terminator(&mut self) {
+    fn keep_alive(&mut self) {
         self.upcoming_tasks
-            .reset(&self.terminator_key, MAX_DELAY_TIMEOUT);
+            .reset(&self.keep_alive_key, MAX_DELAY_TIMEOUT);
     }
 
     pub fn handle_expired(&mut self, expired: Expired<DelayQueueItem<T>>) {
         match expired.into_inner() {
             DelayQueueItem::TaskSchedule(task_schedule) => self.reschedule_expired(task_schedule),
-            DelayQueueItem::Terminator => self.reschedule_all_tasks(Default::default()),
+            DelayQueueItem::KeepAlive => self.reschedule_all(Default::default()),
         }
     }
 
@@ -109,12 +109,12 @@ where
             .task_scheduler
             .dispatch_and_reschedule_expired_task(&now, task_schedule);
         if let Some(task_schedule) = task_reschedule {
-            self.reschedule_next_task(&now, task_schedule);
-            self.reset_terminator();
+            self.schedule_next(&now, task_schedule);
+            self.keep_alive();
         }
     }
 
-    fn reschedule_next_task(
+    fn schedule_next(
         &mut self,
         now: &DateTime<T::TimeZone>,
         task_schedule: T,
@@ -147,7 +147,7 @@ where
         }
     }
 
-    pub fn reschedule_all_tasks(&mut self, task_schedules: Vec<T>) {
+    pub fn reschedule_all(&mut self, task_schedules: Vec<T>) {
         // Clear the delay queue, i.e. discard all tasks
         debug!("Discarding all scheduled tasks");
         self.upcoming_tasks.clear();
@@ -156,11 +156,11 @@ where
         self.upcoming_tasks.reserve(task_schedules.len() + 1);
         let now = self.task_scheduler.now();
         task_schedules.into_iter().for_each(|task_schedule| {
-            self.reschedule_next_task(&now, task_schedule);
+            self.schedule_next(&now, task_schedule);
         });
-        self.terminator_key = self
+        self.keep_alive_key = self
             .upcoming_tasks
-            .insert(DelayQueueItem::Terminator, MAX_DELAY_TIMEOUT);
+            .insert(DelayQueueItem::KeepAlive, MAX_DELAY_TIMEOUT);
     }
 }
 
@@ -238,14 +238,14 @@ pub enum TaskSchedulingNotification {}
 type TaskSchedulingNotificationSender = NotificationSender<TaskSchedulingNotification>;
 pub type TaskSchedulingNotificationReceiver = NotificationReceiver<TaskSchedulingNotification>;
 
-pub struct TaskSchedulingController<T: TaskSchedule> {
+pub struct TaskSchedulingActor<T: TaskSchedule> {
     // Currently unused
     _notification_tx: TaskSchedulingNotificationSender,
 
     scheduled_tasks: ScheduledTasks<T>,
 }
 
-impl<T> TaskSchedulingController<T>
+impl<T> TaskSchedulingActor<T>
 where
     T: TaskSchedule + Send + std::fmt::Debug,
 {
@@ -322,7 +322,7 @@ where
             TaskSchedulingCommand::RescheduleAll(task_schedules) => {
                 self.scheduled_tasks
                     .lock_inner()
-                    .reschedule_all_tasks(task_schedules);
+                    .reschedule_all(task_schedules);
                 Ok(())
             }
         };

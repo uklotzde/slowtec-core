@@ -24,7 +24,7 @@ use failure::{Error, Fallible};
 // Exports
 ////////////////////////////////////////////////////////////////////////
 
-pub mod controllers;
+pub mod actor;
 
 pub mod util;
 
