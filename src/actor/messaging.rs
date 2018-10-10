@@ -1,21 +1,18 @@
 use super::*;
 
-use util::{connection::*, message::*};
+use domain::connection::ConnectionId;
+use domain::messaging::{MessageId, MessagePayload, PushMessageChannel};
 
 use futures::{Future, Stream};
 
 use std::collections::HashMap;
 use std::ops::DerefMut;
 
-pub trait PushConnection {
-    fn push_message(&mut self, message_payload: MessagePayload) -> Fallible<()>;
-}
-
 #[derive(Debug, Clone, Copy)]
 pub enum PushConnectionIncident {}
 
 pub enum PushConnectionCommand {
-    Connect(ConnectionId, Box<dyn PushConnection + Send>),
+    Connect(ConnectionId, Box<dyn PushMessageChannel + Send>),
     Disconnect(ConnectionId),
     Reply(ConnectionId, MessageId, MessagePayload),
     Notify(ConnectionId, MessagePayload),
@@ -34,14 +31,14 @@ type PushConnectionActionReceiver = ActionReceiver<PushConnectionAction>;
 
 pub enum PushConnectionNotification {
     Connected(ConnectionId),
-    Disconnected(ConnectionId, Box<dyn PushConnection + Send>),
+    Disconnected(ConnectionId, Box<dyn PushMessageChannel + Send>),
 }
 
 type PushConnectionNotificationSender = NotificationSender<PushConnectionNotification>;
 pub type PushConnectionNotificationReceiver = NotificationReceiver<PushConnectionNotification>;
 
 pub struct PushConnectionActor {
-    connections: HashMap<ConnectionId, Box<dyn PushConnection + Send>>,
+    connections: HashMap<ConnectionId, Box<dyn PushMessageChannel + Send>>,
     notification_tx: PushConnectionNotificationSender,
 }
 
@@ -53,7 +50,11 @@ impl PushConnectionActor {
         }
     }
 
-    fn connect(&mut self, connection_id: ConnectionId, connection: Box<dyn PushConnection + Send>) {
+    fn connect(
+        &mut self,
+        connection_id: ConnectionId,
+        connection: Box<dyn PushMessageChannel + Send>,
+    ) {
         debug_assert!(!self.connections.contains_key(&connection_id));
         self.connections.insert(connection_id, connection);
     }
@@ -61,7 +62,7 @@ impl PushConnectionActor {
     fn disconnect(
         &mut self,
         connection_id: ConnectionId,
-    ) -> Option<Box<dyn PushConnection + Send>> {
+    ) -> Option<Box<dyn PushMessageChannel + Send>> {
         debug_assert!(self.connections.contains_key(&connection_id));
         self.connections.remove(&connection_id)
     }
@@ -69,7 +70,7 @@ impl PushConnectionActor {
     fn connection(
         &mut self,
         connection_id: ConnectionId,
-    ) -> Option<&mut (dyn PushConnection + Send + 'static)> {
+    ) -> Option<&mut (dyn PushMessageChannel + Send + 'static)> {
         self.connections
             .get_mut(&connection_id)
             .map(|boxed| boxed.deref_mut())

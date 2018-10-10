@@ -1,5 +1,17 @@
+use super::*;
+
 use std::cell::Cell;
 use std::usize;
+
+#[derive(Debug, Clone)]
+pub enum MessagePayload {
+    Text(String),
+    Binary(Vec<u8>),
+}
+
+pub trait PushMessageChannel {
+    fn push_message(&mut self, message_payload: MessagePayload) -> Fallible<()>;
+}
 
 pub type MessageId = usize;
 
@@ -35,12 +47,6 @@ impl Default for MessageIdGenerator {
             next_id: Cell::new(Self::MIN_ID),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum MessagePayload {
-    Text(String),
-    Binary(Vec<u8>),
 }
 
 #[cfg(test)]
