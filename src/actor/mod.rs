@@ -22,14 +22,14 @@ pub type QueryResponse<R> = Response<R>;
 pub type QueryResponseSender<R> = ResponseSender<R>;
 pub type QueryResponseReceiver<R> = ResponseReceiver<R>;
 
-// Action = Incident | Command | Query
-pub enum Action<I, C, Q>
+// Action = Observation | Command | Query
+pub enum Action<O, C, Q>
 where
-    I: Send,
+    O: Send,
     C: Send,
     Q: Send,
 {
-    Incident(I),
+    Observation(O),
     Command(CommandResponseSender, C),
     Query(Q),
 }
@@ -62,15 +62,15 @@ pub fn notify<N>(notification_tx: &NotificationSender<N>, notification: N) {
     }
 }
 
-pub fn forward_incident<I, C, Q>(action_tx: &ActionSender<Action<I, C, Q>>, incident: I)
+pub fn forward_observation<O, C, Q>(action_tx: &ActionSender<Action<O, C, Q>>, observation: O)
 where
-    I: Send,
+    O: Send,
     C: Send,
     Q: Send,
 {
-    trace!("Forwarding incident");
-    if let Err(err) = action_tx.unbounded_send(Action::Incident(incident)) {
-        error!("Failed to forward incident: {}", err);
+    trace!("Forwarding observation");
+    if let Err(err) = action_tx.unbounded_send(Action::Observation(observation)) {
+        error!("Failed to forward observation: {}", err);
     }
 }
 
