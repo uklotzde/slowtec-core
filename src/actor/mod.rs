@@ -87,15 +87,21 @@ pub fn new_command_response_channel() -> (CommandResponseSender, CommandResponse
     oneshot::channel()
 }
 
-pub fn invoke_command<C>(
-    request_tx: &RequestSender<C>,
+pub fn invoke_command<O, C, Q>(
+    request_tx: &RequestSender<Action<O, C, Q>>,
     command: C,
-    response_rx: CommandResponseReceiver,
-) -> impl Future<Item = (), Error = Error> {
+) -> impl Future<Item = (), Error = Error>
+where
+    O: Send,
+    C: Send,
+    Q: Send,
+{
     trace!("Invoking command");
+    let (response_tx, response_rx) = new_command_response_channel();
+    let action = Action::Command(response_tx, command);
     futures::future::result(
         request_tx
-            .unbounded_send(command)
+            .unbounded_send(action)
             .map_err(|err| format_err!("Failed to submit command: {}", err)),
     ).and_then(|()| await_response(response_rx))
 }
