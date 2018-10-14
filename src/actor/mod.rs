@@ -83,7 +83,7 @@ fn await_response<T>(response_rx: ResponseReceiver<T>) -> impl Future<Item = T, 
         }).and_then(move |response| response)
 }
 
-pub fn new_command_response_channel() -> (CommandResponseSender, CommandResponseReceiver) {
+fn new_command_response_channel() -> (CommandResponseSender, CommandResponseReceiver) {
     oneshot::channel()
 }
 
