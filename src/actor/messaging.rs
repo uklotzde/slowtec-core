@@ -1,7 +1,9 @@
 use super::*;
 
-use domain::connection::ConnectionId;
-use domain::messaging::{MessageId, MessagePayload, PushMessageChannel};
+use domain::messaging::{MessagePayload, PushMessageChannel};
+
+use util::connection::ConnectionId;
+use util::messaging::MessageId;
 
 use futures::{Future, Stream};
 

@@ -12,6 +12,9 @@ extern crate futures;
 #[macro_use]
 extern crate log;
 
+#[macro_use]
+extern crate serde_derive;
+
 extern crate tokio;
 
 ////////////////////////////////////////////////////////////////////////
@@ -27,5 +30,7 @@ use failure::{Error, Fallible};
 pub mod actor;
 
 pub mod domain;
+
+pub mod util;
 
 ////////////////////////////////////////////////////////////////////////
