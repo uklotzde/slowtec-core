@@ -1,6 +1,6 @@
 use super::*;
 
-use domain::scheduling::*;
+use crate::domain::scheduling::*;
 
 use chrono::{DateTime, SecondsFormat};
 
