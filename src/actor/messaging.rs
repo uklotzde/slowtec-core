@@ -132,18 +132,18 @@ impl PushConnectionActor {
 
     fn push_broadcast_filtered<P>(
         &mut self,
-        mut predicate: P,
+        filter_connection_id: P,
         broadcast_payload: &MessagePayload,
     ) -> Fallible<()>
     where
-        P: FnMut(ConnectionId) -> bool,
+        P: Fn(ConnectionId) -> bool,
     {
         let mut success_count: usize = 0;
         let mut failure_count: usize = 0;
         for (connection_id, connection) in self
             .connections
             .iter_mut()
-            .filter(|(connection_id, _)| predicate(**connection_id))
+            .filter(|(connection_id, _)| filter_connection_id(**connection_id))
         {
             if let Err(err) = connection.push_message(broadcast_payload.clone()) {
                 failure_count += 1;
