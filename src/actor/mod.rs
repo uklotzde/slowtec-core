@@ -22,15 +22,28 @@ pub type QueryResponse<R> = Response<R>;
 pub type QueryResponseSender<R> = ResponseSender<R>;
 pub type QueryResponseReceiver<R> = ResponseReceiver<R>;
 
-// Action = Observation | Command | Query
-pub enum Action<O, C, Q>
+// Action = Stimulus | Command | Query
+pub enum Action<S, C, Q>
 where
-    O: Send,
+    S: Send,
     C: Send,
     Q: Send,
 {
-    Observation(O),
+    // A stimulus is a one-way message that triggers a behavior, e.g. a state
+    // change. Stimuli are executed without any response. Errors during execution
+    // can only be logged and/or published by sending out notifications.
+    // Notifications might also be published if the state of the actor has
+    // changed during execution.
+    Stimulus(S),
+    // A command is a bi-directional message that triggers a reaction, e.g.
+    // a state change. Commands are executed and answered by replying with
+    // either an empty(!) response on success or an error upon any failure
+    // or rejection. Notifications might be published if the state of the
+    // actor has changed during execution.
     Command(CommandResponseSender, C),
+    // A query is an idempotent action that must not change the state.
+    // Queries are executed and answered by replying with a response. No
+    // notifications are sent, since the state didn't change.
     Query(Q),
 }
 
@@ -62,15 +75,15 @@ pub fn notify<N>(notification_tx: &NotificationSender<N>, notification: N) {
     }
 }
 
-pub fn forward_observation<O, C, Q>(action_tx: &ActionSender<Action<O, C, Q>>, observation: O)
+pub fn forward_stimulus<S, C, Q>(action_tx: &ActionSender<Action<S, C, Q>>, stimulus: S)
 where
-    O: Send,
+    S: Send,
     C: Send,
     Q: Send,
 {
-    trace!("Forwarding observation");
-    if let Err(err) = action_tx.unbounded_send(Action::Observation(observation)) {
-        error!("Failed to forward observation: {}", err);
+    trace!("Forwarding stimulus");
+    if let Err(err) = action_tx.unbounded_send(Action::Stimulus(stimulus)) {
+        error!("Failed to submit stimulus: {}", err);
     }
 }
 
@@ -87,12 +100,12 @@ fn new_command_response_channel() -> (CommandResponseSender, CommandResponseRece
     oneshot::channel()
 }
 
-pub fn invoke_command<O, C, Q>(
-    request_tx: &RequestSender<Action<O, C, Q>>,
+pub fn invoke_command<S, C, Q>(
+    request_tx: &RequestSender<Action<S, C, Q>>,
     command: C,
 ) -> impl Future<Item = (), Error = Error>
 where
-    O: Send,
+    S: Send,
     C: Send,
     Q: Send,
 {

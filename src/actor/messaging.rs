@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::ops::DerefMut;
 
 #[derive(Debug, Clone, Copy)]
-pub enum PushConnectionObservation {}
+pub enum PushConnectionStimulus {}
 
 pub enum PushConnectionCommand {
     Connect(ConnectionId, Box<dyn PushMessageChannel + Send>),
@@ -25,7 +25,7 @@ pub enum PushConnectionCommand {
 pub enum PushConnectionQuery {}
 
 pub type PushConnectionAction =
-    Action<PushConnectionObservation, PushConnectionCommand, PushConnectionQuery>;
+    Action<PushConnectionStimulus, PushConnectionCommand, PushConnectionQuery>;
 
 pub type PushConnectionActionSender = ActionSender<PushConnectionAction>;
 type PushConnectionActionReceiver = ActionReceiver<PushConnectionAction>;
@@ -228,7 +228,7 @@ impl PushConnectionActor {
 
     fn handle_action(&mut self, action: PushConnectionAction) {
         match action {
-            Action::Observation(observation) => match observation {},
+            Action::Stimulus(stimulus) => match stimulus {},
             Action::Command(response_tx, command) => self.handle_command(response_tx, command),
             Action::Query(query) => match query {},
         }
