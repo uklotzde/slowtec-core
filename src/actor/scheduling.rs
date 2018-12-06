@@ -231,7 +231,8 @@ where
             // DelayQueue to the Timer of the corresponding Runtime in
             // DelayQueue::new()!!!
             Ok(ScheduledTasks::new(ScheduledTaskQueue::new(task_scheduler)))
-        }).and_then(move |scheduled_tasks| {
+        })
+        .and_then(move |scheduled_tasks| {
             // Create a handler for expired tasks
             let mut expired_tasks = scheduled_tasks.clone();
             let expired_tasks_handler = scheduled_tasks
@@ -239,14 +240,17 @@ where
                 .for_each(move |expired| {
                     expired_tasks.lock_inner().handle_expired(expired);
                     Ok(())
-                }).map_err(|err| error!("Failed to handle expired tasks: {}", err));
+                })
+                .map_err(|err| error!("Failed to handle expired tasks: {}", err));
             Ok((scheduled_tasks, expired_tasks_handler))
-        }).and_then(move |(scheduled_tasks, expired_tasks_handler)| {
+        })
+        .and_then(move |(scheduled_tasks, expired_tasks_handler)| {
             // Create a handler for actions...
             let action_handler = Self {
                 _notification_tx,
                 scheduled_tasks,
-            }.handle_actions(action_rx);
+            }
+            .handle_actions(action_rx);
             // ...and combine the handlers.
             // Warning: The order for combining both futures seems to matter!!
             // Using select() on action_handler followed by expired_tasks_handler

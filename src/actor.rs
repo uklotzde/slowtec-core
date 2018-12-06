@@ -93,7 +93,8 @@ fn await_response<T>(response_rx: ResponseReceiver<T>) -> impl Future<Item = T, 
             let msg = "No response received";
             error!("{}", msg);
             format_err!("{}", msg)
-        }).and_then(move |response| response)
+        })
+        .and_then(move |response| response)
 }
 
 fn new_command_response_channel() -> (CommandResponseSender, CommandResponseReceiver) {
@@ -116,7 +117,8 @@ where
         request_tx
             .unbounded_send(action)
             .map_err(|err| format_err!("Failed to submit command: {}", err)),
-    ).and_then(|()| await_response(response_rx))
+    )
+    .and_then(|()| await_response(response_rx))
 }
 
 pub fn new_query_response_channel<R>() -> (QueryResponseSender<R>, QueryResponseReceiver<R>) {
@@ -133,7 +135,8 @@ pub fn invoke_query<Q, R>(
         request_tx
             .unbounded_send(query)
             .map_err(|err| format_err!("Failed to submit query: {}", err)),
-    ).and_then(|()| await_response(response_rx))
+    )
+    .and_then(|()| await_response(response_rx))
 }
 
 pub mod messaging;
