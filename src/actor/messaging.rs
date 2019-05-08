@@ -74,7 +74,7 @@ impl PushConnectionActor {
     ) -> Option<&mut (dyn PushMessageChannel + Send + 'static)> {
         self.connections
             .get_mut(&connection_id)
-            .map(|boxed| boxed.deref_mut())
+            .map(DerefMut::deref_mut)
     }
 
     fn push_response(
