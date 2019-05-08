@@ -182,7 +182,7 @@ impl<T> Stream for ScheduledTasks<T> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum TaskSchedulingStimulus {}
+pub enum TaskSchedulingSignal {}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TaskSchedulingCommand<T: TaskSchedule> {
@@ -193,7 +193,7 @@ pub enum TaskSchedulingCommand<T: TaskSchedule> {
 pub enum TaskSchedulingQuery {}
 
 pub type TaskSchedulingAction<T> =
-    Action<TaskSchedulingStimulus, TaskSchedulingCommand<T>, TaskSchedulingQuery>;
+    Action<TaskSchedulingSignal, TaskSchedulingCommand<T>, TaskSchedulingQuery>;
 
 pub type TaskSchedulingActionSender<T> = ActionSender<TaskSchedulingAction<T>>;
 type TaskSchedulingActionReceiver<T> = ActionReceiver<TaskSchedulingAction<T>>;
@@ -277,7 +277,7 @@ where
 
     fn handle_action(&mut self, action: TaskSchedulingAction<T>) {
         match action {
-            Action::Stimulus(stimulus) => match stimulus {},
+            Action::Signal(signal) => match signal {},
             Action::Command(response_tx, command) => self.handle_command(response_tx, command),
             Action::Query(query) => match query {},
         }

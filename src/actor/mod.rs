@@ -22,28 +22,28 @@ pub type QueryResponse<R> = Response<R>;
 pub type QueryResponseSender<R> = ResponseSender<R>;
 pub type QueryResponseReceiver<R> = ResponseReceiver<R>;
 
-// Action = Stimulus | Command | Query
+// Action = Signal | Command | Query
 pub enum Action<S, C, Q>
 where
     S: Send,
     C: Send,
     Q: Send,
 {
-    // A stimulus is a one-way message that triggers a behavior, e.g. a state
+    // A signal is a one-way message that triggers a behavior, e.g. a state
     // change. Stimuli are executed without any response. Errors during execution
     // can only be logged and/or published by sending out notifications.
     // Notifications might also be published if the state of the actor has
     // changed during execution.
-    Stimulus(S),
+    Signal(S),
     // A command is a bi-directional message that triggers a reaction, e.g.
     // a state change. Commands are executed and answered by replying with
     // either an empty(!) response on success or an error upon any failure
     // or rejection. Notifications might be published if the state of the
     // actor has changed during execution.
     Command(CommandResponseSender, C),
-    // A query is an idempotent action that must not change the state.
-    // Queries are executed and answered by replying with a response. No
-    // notifications are sent, since the state didn't change.
+    // Queries are executed and answered by replying with a response. A query
+    // is an idempotent action if it does not change the state. If the state
+    // didn't change no notifications are sent.
     Query(Q),
 }
 
@@ -75,15 +75,15 @@ pub fn notify<N>(notification_tx: &NotificationSender<N>, notification: N) {
     }
 }
 
-pub fn forward_stimulus<S, C, Q>(action_tx: &ActionSender<Action<S, C, Q>>, stimulus: S)
+pub fn forward_signal<S, C, Q>(action_tx: &ActionSender<Action<S, C, Q>>, signal: S)
 where
     S: Send,
     C: Send,
     Q: Send,
 {
-    trace!("Forwarding stimulus");
-    if let Err(err) = action_tx.unbounded_send(Action::Stimulus(stimulus)) {
-        error!("Failed to submit stimulus: {}", err);
+    trace!("Forwarding signal");
+    if let Err(err) = action_tx.unbounded_send(Action::Signal(signal)) {
+        error!("Failed to submit signal: {}", err);
     }
 }
 
