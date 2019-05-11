@@ -31,8 +31,8 @@ pub type PushConnectionActionSender = ActionSender<PushConnectionAction>;
 type PushConnectionActionReceiver = ActionReceiver<PushConnectionAction>;
 
 pub enum PushConnectionNotification {
-    Connected(ConnectionId),
-    Disconnected(ConnectionId, Box<dyn PushMessageChannel + Send>),
+    Connected(ConnectionId, usize),
+    Disconnected(ConnectionId, usize, Box<dyn PushMessageChannel + Send>),
 }
 
 type PushConnectionNotificationSender = NotificationSender<PushConnectionNotification>;
@@ -193,7 +193,7 @@ impl PushConnectionActor {
                 info!("Connection {} - Connected", connection_id);
                 notify(
                     &self.notification_tx,
-                    PushConnectionNotification::Connected(connection_id),
+                    PushConnectionNotification::Connected(connection_id, self.connections.len()),
                 );
                 Ok(())
             }
@@ -203,7 +203,11 @@ impl PushConnectionActor {
                     info!("Connection {} - Disconnected", connection_id);
                     notify(
                         &self.notification_tx,
-                        PushConnectionNotification::Disconnected(connection_id, connection),
+                        PushConnectionNotification::Disconnected(
+                            connection_id,
+                            self.connections.len(),
+                            connection,
+                        ),
                     );
                 } else {
                     warn!("Connection {} - Not connected", connection_id);
