@@ -53,7 +53,7 @@ pub type ActionReceiver<A> = RequestReceiver<A>;
 pub type NotificationSender<N> = MessageSender<N>;
 pub type NotificationReceiver<N> = MessageReceiver<N>;
 
-pub fn new_request_channel<T>() -> (RequestSender<T>, RequestReceiver<T>) {
+pub fn new_action_channel<T>() -> (RequestSender<T>, RequestReceiver<T>) {
     mpsc::unbounded()
 }
 

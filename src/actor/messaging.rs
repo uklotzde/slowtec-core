@@ -253,7 +253,7 @@ impl PushConnectionActor {
         PushConnectionActionSender,
         PushConnectionNotificationReceiver,
     ) {
-        let (action_tx, action_rx) = new_request_channel();
+        let (action_tx, action_rx) = new_action_channel();
         let (notification_tx, notification_rx) = new_notification_channel();
         let action_handler = Self::new(notification_tx).handle_actions(action_rx);
         (action_handler, action_tx, notification_rx)

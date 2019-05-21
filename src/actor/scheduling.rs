@@ -222,9 +222,8 @@ where
         TaskSchedulingActionSender<T>,
         TaskSchedulingNotificationReceiver,
     ) {
-        let (action_tx, action_rx) = new_request_channel();
+        let (action_tx, action_rx) = new_action_channel();
         let (_notification_tx, notification_rx) = new_notification_channel();
-        let _ping_action_tx = action_tx.clone();
         let event_loop = futures::lazy(move || {
             info!("Starting scheduler");
             // Lazy instantiation is essential to implicitly attach the
@@ -259,8 +258,8 @@ where
             // the next action is received.
             action_handler
                 .select(expired_tasks_handler)
-                .map(|_| ())
-                .map_err(|_| ())
+                .map(drop)
+                .map_err(drop)
         });
         (event_loop, action_tx, notification_rx)
     }
