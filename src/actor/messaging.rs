@@ -248,7 +248,7 @@ impl PushConnectionActor {
         })
     }
 
-    pub fn evoke() -> (
+    pub fn create() -> (
         impl Future<Item = (), Error = ()>,
         PushConnectionActionSender,
         PushConnectionNotificationReceiver,

@@ -215,7 +215,7 @@ impl<T> TaskSchedulingActor<T>
 where
     T: TaskSchedule + Send + std::fmt::Debug,
 {
-    pub fn evoke(
+    pub fn create(
         task_scheduler: Box<dyn TaskScheduler<TaskSchedule = T> + Send>,
     ) -> (
         impl Future<Item = (), Error = ()>,
